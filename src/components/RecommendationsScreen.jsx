@@ -37,6 +37,7 @@ export function RecommendationsScreen({
   audioUrl: initialAudioUrl,
   audio_url: initialAudioUrlAlt,
   apiUrl = 'http://localhost:8000/recommend',
+  ttsApiUrl = 'http://localhost:8000/tts',
   onRestart,
   onBackToChat,
   skipFetch = false,
@@ -44,6 +45,7 @@ export function RecommendationsScreen({
   const [programs, setPrograms] = useState(initialPrograms !== undefined ? initialPrograms : null);
   const [relaxedFiltersNote, setRelaxedFiltersNote] = useState(initialRelaxedNote || initialRelaxedFilters || null);
   const [audioUrl, setAudioUrl] = useState(initialAudioUrl || initialAudioUrlAlt || null);
+  const [audioAvailable, setAudioAvailable] = useState(Boolean(initialAudioUrl || initialAudioUrlAlt));
   const [isLoading, setIsLoading] = useState(!skipFetch && initialPrograms === undefined);
   const [fetchError, setFetchError] = useState(false);
 
@@ -74,17 +76,58 @@ export function RecommendationsScreen({
 
       const receivedPrograms = data.programs || data.recommendations || [];
       const receivedNote = data.relaxed_filters || data.relaxedFiltersNote || null;
-      const receivedAudio = data.audio_url || data.audioUrl || null;
+      const initialReceivedAudio = data.audio_url || data.audioUrl || null;
 
       setPrograms(receivedPrograms);
       setRelaxedFiltersNote(receivedNote);
-      setAudioUrl(receivedAudio);
+
+      if (initialReceivedAudio) {
+        setAudioUrl(initialReceivedAudio);
+        setAudioAvailable(true);
+      } else {
+        setAudioUrl(null);
+        setAudioAvailable(false);
+      }
+
+      // Task-20: POST top result's reasoning text to /tts
+      if (receivedPrograms && receivedPrograms.length > 0) {
+        const topReasoning = receivedPrograms[0].reasoning || receivedPrograms[0].name;
+        try {
+          const ttsResponse = await fetch(ttsApiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: topReasoning,
+            }),
+          });
+
+          if (ttsResponse.ok) {
+            const ttsData = await ttsResponse.json();
+            if (ttsData && ttsData.audio_available === true) {
+              setAudioAvailable(true);
+              setAudioUrl(ttsData.audio_url || initialReceivedAudio || 'http://localhost:8000/audio/sample.mp3');
+            } else {
+              setAudioAvailable(false);
+              setAudioUrl(null);
+            }
+          } else {
+            setAudioAvailable(false);
+            setAudioUrl(null);
+          }
+        } catch (ttsErr) {
+          // If /tts fails or audio_available is false/missing, render no audio element
+          setAudioAvailable(false);
+          setAudioUrl(null);
+        }
+      }
     } catch (err) {
       setFetchError(true);
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, categoryResult, category_result, profile]);
+  }, [apiUrl, ttsApiUrl, categoryResult, category_result, profile]);
 
   useEffect(() => {
     if (!skipFetch && initialPrograms === undefined) {
@@ -103,6 +146,7 @@ export function RecommendationsScreen({
     }
     if (initialAudioUrl || initialAudioUrlAlt) {
       setAudioUrl(initialAudioUrl || initialAudioUrlAlt);
+      setAudioAvailable(true);
     }
   }, [initialPrograms, initialRelaxedNote, initialRelaxedFilters, initialAudioUrl, initialAudioUrlAlt]);
 
@@ -211,7 +255,7 @@ export function RecommendationsScreen({
           </div>
         )}
 
-        {audioUrl && (
+        {audioAvailable && audioUrl && (
           <div className="audio-player-container" data-testid="audio-player-container">
             <p className="audio-player-label">🔊 Spoken Recommendations Summary</p>
             <audio
@@ -240,11 +284,6 @@ export function RecommendationsScreen({
                 <strong>Why this matches:</strong>
                 <p>{prog.reasoning}</p>
               </div>
-              {prog.audio_url && !audioUrl && (
-                <div className="card-audio-player">
-                  <audio controls src={prog.audio_url} data-testid={`card-audio-${index}`} />
-                </div>
-              )}
             </div>
           ))}
         </div>

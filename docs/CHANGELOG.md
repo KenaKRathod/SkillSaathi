@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-19 — Audio Playback Wiring with `/tts` API
+- **What changed:**
+  - Modified `RecommendationsScreen` to POST top recommendation's reasoning text to `http://localhost:8000/tts` after loading real results.
+  - Added conditional `<audio>` player rendering when `/tts` returns `audio_available: true`.
+  - Implemented fallback omitting the `<audio>` player when `audio_available` is `false`, missing, or when `/tts` POST fails.
+  - Added automated RTL unit test suite (`src/components/RecommendationsScreen.test.jsx`) verifying `audio_available: true` renders audio player and `audio_available: false` / missing field renders no player.
+- **Files touched:**
+  - `src/components/RecommendationsScreen.jsx`
+  - `src/components/RecommendationsScreen.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Complete Task-20 optional audio playback wiring for spoken recommendation summaries with fallback support.
+- **Contracts affected:** none
+- **Known issues / TODO:** none
+
 ## 2026-09-19 — Wire Recommendations Screen to `/recommend` API
 - **What changed:**
   - Updated `RecommendationsScreen` to POST `{ category_result, profile }` to `http://localhost:8000/recommend` on component mount.

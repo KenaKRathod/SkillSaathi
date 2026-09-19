@@ -1,10 +1,14 @@
 """FastAPI application for voice-first skilling-recommendation agent."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
+from app.agent_prompt import is_profile_complete
+from app.chat import call_llm
 from app.config import settings
+from app.state import get_session
 from app.stt import AudioDecodeError, STTUnavailableError, transcribe_audio
 
 app = FastAPI(
@@ -87,3 +91,60 @@ async def transcribe(audio: UploadFile = File(...)) -> JSONResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"error": "stt_unavailable"},
         )
+
+
+# ---------------------------------------------------------------------------
+# POST /chat — profile-building conversational endpoint
+# ---------------------------------------------------------------------------
+
+class ChatRequest(BaseModel):
+    """Incoming chat message from the client."""
+    session_id: str
+    message: str
+
+
+@app.post("/chat")
+async def chat(req: ChatRequest) -> JSONResponse:
+    """Conduct a single turn of the profiling conversation.
+
+    1. Retrieve (or create) session state for ``session_id``.
+    2. Append the user message to the conversation history.
+    3. Call the LLM with SYSTEM_PROMPT + history.
+    4. Parse the JSON response, merge ``extracted_fields`` into the profile.
+    5. Return ``status: complete`` with the full profile when done,
+       otherwise ``status: in_progress`` with the ``next_question``.
+    """
+    session = get_session(req.session_id)
+
+    # Initialise sub-keys on first access
+    profile: Dict[str, Any] = session.setdefault("profile", {})
+    history: List[Dict[str, str]] = session.setdefault("history", [])
+
+    # ---- LLM turn --------------------------------------------------------
+    llm_result = call_llm(history, req.message)
+
+    # Persist messages into session history
+    history.append({"role": "user", "parts": [{"text": req.message}]})
+    if llm_result.get("next_question"):
+        history.append(
+            {"role": "model", "parts": [{"text": llm_result["next_question"]}]}
+        )
+
+    # Merge any newly extracted fields
+    extracted: Dict[str, Any] = llm_result.get("extracted_fields", {})
+    profile.update(extracted)
+
+    # ---- Response ---------------------------------------------------------
+    if is_profile_complete(profile):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "complete", "profile": profile},
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "in_progress",
+            "next_question": llm_result.get("next_question", ""),
+        },
+    )

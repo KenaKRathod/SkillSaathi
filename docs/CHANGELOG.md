@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-19 — Task-9: Source & normalize NSQF category data
+- **What changed:**
+  - Created `scripts/build_nsqf_categories.py` — downloads the NSDC Job Role List xlsx (604 roles, 36 sectors), groups them into 25 voice-friendly categories, and outputs `data/nsqf_categories.csv`.
+  - Sector-to-category mapping merges related sectors (e.g. "Textile Sector Skill Council" + "Apparel, Made-Ups & Home Furnishing" → "Textiles & Tailoring"), normalises whitespace/casing variants, and handles all 36 source sectors.
+  - Hard-failure path: download errors or unexpected file structure → clear error message naming the URL and expected columns, exit code 1. Never silently produces empty/bad CSV.
+  - Warning if fewer than 15 distinct sectors found after grouping.
+  - 17 new pytest tests covering grouping logic, CSV integrity (20-30 rows, no nulls, no duplicates), and mocked download failure.
+- **Files touched:**
+  - `scripts/build_nsqf_categories.py` (new)
+  - `data/nsqf_categories.csv` (new, generated)
+  - `tests/test_nsqf_categories.py` (new)
+  - `requirements.txt` (added pandas, openpyxl)
+- **Why:** Task-9 — provide the curated NSQF category data file that the skill mapper and recommender stages depend on.
+- **Contracts affected:** Creates the `data/nsqf_categories.*` data file referenced in AI_RULES §2 and §3.4.
+- **Known issues / TODO:** Category 25 ("Retail, Sports & General Services") is a catch-all for 7 small sectors; may need splitting if the voice conversation finds it too broad.
+
 ## 2026-09-19 — Task-7: /chat fallback & retry logic
 - **What changed:**
   - `call_llm` now retries the LLM call once on any exception; on second failure returns a scripted fallback question for the next empty profile field instead of raising.

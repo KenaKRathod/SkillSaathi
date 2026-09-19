@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-09-19 — Build Recommendations Screen UI with Mock Data
+- **What changed:**
+  - Implemented Recommendations screen rendering 3 default mock program cards (`name`, `scheme`, `nsqf_level`, `duration`, `reasoning`).
+  - Added support for rendering an optional `relaxed_filters` / `relaxedFiltersNote` banner above the program cards.
+  - Added support for rendering an optional `<audio>` player when `audio_url` / `audioUrl` is present.
+  - Added fallback view for empty program arrays (`programs = []`) rendering a "No matching programs found yet" message and a "Back to Chat" button.
+  - Added automated RTL unit test suite (`src/components/RecommendationsScreen.test.jsx`) covering 3 cards rendering, relaxed filters note conditional display, audio player rendering, and empty array fallback navigation.
+- **Files touched:**
+  - `src/components/RecommendationsScreen.jsx`
+  - `src/App.jsx`
+  - `src/App.css`
+  - `src/components/RecommendationsScreen.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Build Task-17 Recommendations screen UI against mock data with relaxed filters note, audio player, empty state fallback, and RTL test coverage.
+- **Contracts affected:** none
+- **Known issues / TODO:** none
+
 ## 2026-09-19 — Wire Confirm Screen to Map Skills API
 - **What changed:**
   - Updated the confirm form flow to POST the reviewed profile to `http://localhost:8000/map-skills`.

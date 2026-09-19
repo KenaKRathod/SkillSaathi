@@ -66,7 +66,7 @@ export function App() {
 
       {currentScreen === SCREENS.RECOMMENDATIONS && (
         <RecommendationsScreen
-          profile={profile}
+          onBackToChat={() => setCurrentScreen(SCREENS.CHAT)}
           onRestart={() => {
             setProfile(null);
             setCurrentScreen(SCREENS.CONSENT);

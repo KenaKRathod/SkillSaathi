@@ -29,6 +29,9 @@ wheels/
 htmlcov/
 .tox/
 .nox/
+tests/data/
+*.mp3
+*.wav
 
 # Environment variables (keep secrets out of git)
 .env

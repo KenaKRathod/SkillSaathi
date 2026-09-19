@@ -18,6 +18,23 @@ def clean_sessions():
     clear_sessions()
 
 
+def test_root_endpoint_returns_200():
+    """GET / returns 200 and welcome message with links."""
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert "docs" in data
+
+
+def test_favicon_returns_204():
+    """GET /favicon.ico returns 204 No Content."""
+    client = TestClient(app)
+    response = client.get("/favicon.ico")
+    assert response.status_code == 204
+
+
 def test_health_returns_200_and_ok():
     """GET /health returns 200 and {"status": "ok"} using TestClient (httpx)."""
     client = TestClient(app)

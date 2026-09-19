@@ -5,13 +5,16 @@ import ConfirmScreen, { DEFAULT_MOCK_PROFILE, PROFILE_FIELDS } from './ConfirmSc
 
 describe('ConfirmScreen Component', () => {
   let consoleSpy;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    global.fetch = originalFetch;
   });
 
   it('renders all 7 fields with correct initial values when default mock profile is used', () => {
@@ -62,6 +65,113 @@ describe('ConfirmScreen Component', () => {
     await user.clear(missingInput);
     await user.type(missingInput, 'Pipe Wrench');
     expect(missingInput).toHaveValue('Pipe Wrench');
+  });
+
+  it('posts the profile to /map-skills and advances on a category result', async () => {
+    const onNextMock = vi.fn();
+    const onConfirmMock = vi.fn();
+    const user = userEvent.setup();
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'category_result',
+        primary_category: 'Construction',
+      }),
+    });
+
+    render(
+      <ConfirmScreen
+        profile={{
+          occupation: 'Mason',
+          years_experience: '4 years',
+          tools_used: 'Trowel',
+          education: '8th Pass',
+          district: 'Jaipur',
+          wage_goal: '18000/month',
+          mobility: 'Yes',
+        }}
+        onNext={onNextMock}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Confirm/i }));
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/map-skills',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual(
+      expect.objectContaining({ occupation: 'Mason' })
+    );
+
+    expect(onConfirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({ occupation: 'Mason' })
+    );
+    expect(onNextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'category_result' })
+    );
+  });
+
+  it('shows a follow-up question when the mapper asks for clarification and re-posts with the answer', async () => {
+    const onNextMock = vi.fn();
+    const user = userEvent.setup();
+
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'needs_clarification',
+          question: 'Which skilled task do you do most often?',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'category_result',
+          primary_category: 'Construction',
+        }),
+      });
+
+    render(
+      <ConfirmScreen
+        profile={{
+          occupation: 'Mason',
+          years_experience: '4 years',
+          tools_used: 'Trowel',
+          education: '8th Pass',
+          district: 'Jaipur',
+          wage_goal: '18000/month',
+          mobility: 'Yes',
+        }}
+        onNext={onNextMock}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Confirm/i }));
+
+    const question = await screen.findByText(/Which skilled task do you do most often/i);
+    expect(question).toBeInTheDocument();
+
+    const followUpInput = screen.getByLabelText(/Which skilled task do you do most often/i);
+    await user.type(followUpInput, 'Brick wall construction');
+    await user.click(screen.getByRole('button', { name: /Submit Answer/i }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(global.fetch.mock.calls[1][1].body)).toEqual(
+      expect.objectContaining({
+        occupation: 'Mason',
+        answer: 'Brick wall construction',
+      })
+    );
+    expect(onNextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'category_result' })
+    );
   });
 
   it('clicking Confirm logs the final profile and calls onNext/onConfirm', async () => {

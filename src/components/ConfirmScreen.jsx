@@ -20,7 +20,13 @@ export const DEFAULT_MOCK_PROFILE = {
   mobility: 'Yes (within state)',
 };
 
-export function ConfirmScreen({ profile, onNext, onConfirm, onBack }) {
+export function ConfirmScreen({
+  profile,
+  onNext,
+  onConfirm,
+  onBack,
+  mapSkillsApiUrl = 'http://localhost:8000/map-skills',
+}) {
   const [formData, setFormData] = useState(() => {
     const source = profile || DEFAULT_MOCK_PROFILE;
     const initial = {};
@@ -34,6 +40,9 @@ export function ConfirmScreen({ profile, onNext, onConfirm, onBack }) {
     });
     return initial;
   });
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const [followUpAnswer, setFollowUpAnswer] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (key, value) => {
     setFormData((prev) => ({
@@ -42,14 +51,69 @@ export function ConfirmScreen({ profile, onNext, onConfirm, onBack }) {
     }));
   };
 
+  const submitProfile = async (payload, answerValue) => {
+    const requestPayload = answerValue === undefined ? payload : { ...payload, answer: answerValue };
+
+    if (typeof fetch !== 'function') {
+      console.log('Confirmed profile:', payload);
+      if (onConfirm) {
+        onConfirm(payload);
+      } else if (onNext) {
+        onNext(payload);
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      console.log('Confirmed profile:', payload);
+      if (onConfirm) {
+        onConfirm(payload);
+      }
+
+      const response = await fetch(mapSkillsApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Map skills API error with status ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result?.status === 'needs_clarification') {
+        setFollowUpQuestion(result.question || 'Please provide a bit more detail.');
+        setFollowUpAnswer('');
+        return;
+      }
+
+      onNext?.(result || payload);
+    } catch (error) {
+      console.error('Map skills request failed:', error);
+      onNext?.(payload);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleConfirm = (e) => {
     e?.preventDefault();
-    console.log('Confirmed profile:', formData);
-    if (onConfirm) {
-      onConfirm(formData);
-    } else if (onNext) {
-      onNext(formData);
+    if (followUpQuestion) {
+      return;
     }
+    submitProfile(formData);
+  };
+
+  const handleFollowUpSubmit = (e) => {
+    e?.preventDefault();
+    if (!followUpAnswer.trim()) {
+      return;
+    }
+    submitProfile(formData, followUpAnswer.trim());
   };
 
   return (
@@ -80,20 +144,46 @@ export function ConfirmScreen({ profile, onNext, onConfirm, onBack }) {
             ))}
           </div>
 
-          <div className="button-group">
-            {onBack && (
+          {followUpQuestion && (
+            <div className="field-group follow-up-group">
+              <label htmlFor="follow-up-answer" className="field-label">
+                {followUpQuestion}
+              </label>
+              <input
+                id="follow-up-answer"
+                type="text"
+                className="field-input"
+                value={followUpAnswer}
+                onChange={(e) => setFollowUpAnswer(e.target.value)}
+                aria-label={followUpQuestion}
+              />
               <button
                 type="button"
-                className="btn btn-secondary btn-large"
-                onClick={onBack}
+                className="btn btn-primary btn-large"
+                onClick={handleFollowUpSubmit}
+                disabled={isSubmitting || !followUpAnswer.trim()}
               >
-                Back to Chat
+                Submit Answer
               </button>
-            )}
-            <button type="submit" className="btn btn-primary btn-large">
-              Confirm
-            </button>
-          </div>
+            </div>
+          )}
+
+          {!followUpQuestion && (
+            <div className="button-group">
+              {onBack && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-large"
+                  onClick={onBack}
+                >
+                  Back to Chat
+                </button>
+              )}
+              <button type="submit" className="btn btn-primary btn-large" disabled={isSubmitting}>
+                Confirm
+              </button>
+            </div>
+          )}
         </form>
       </main>
     </div>

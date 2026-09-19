@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-19 — Wire Confirm Screen to Map Skills API
+- **What changed:**
+  - Updated the confirm form flow to POST the reviewed profile to `http://localhost:8000/map-skills`.
+  - Added category-result handling that forwards the server response to the next screen via `onNext`.
+  - Added clarification follow-up handling: when the backend returns `needs_clarification`, a one-off question and answer field appear and the profile is re-submitted with the extra answer.
+  - Kept the legacy `onConfirm` callback behavior for existing screen-level tests and callback wiring.
+- **Files touched:**
+  - `src/components/ConfirmScreen.jsx`
+  - `src/components/ConfirmScreen.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Connect the profile confirmation UI to the mapper endpoint and support the low-confidence clarification flow from the backend.
+- **Contracts affected:** none
+- **Known issues / TODO:**
+  - Task 18 will finalize the recommendations navigation and result rendering.
+
 ## 2026-09-19 — Build Chat Screen with `/chat` API & Fallbacks
 - **What changed:**
   - Implemented Chat screen with session ID state (`session_id`).

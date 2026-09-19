@@ -47,6 +47,3 @@ tests/data/
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-#dependencies
-node_modules/

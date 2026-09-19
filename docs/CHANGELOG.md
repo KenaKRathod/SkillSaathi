@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-19 — Wire Recommendations Screen to `/recommend` API
+- **What changed:**
+  - Updated `RecommendationsScreen` to POST `{ category_result, profile }` to `http://localhost:8000/recommend` on component mount.
+  - Replaced mock array with real response payload (`programs`, `relaxed_filters`, `audio_url`).
+  - Added loading indicator state while awaiting `/recommend` response.
+  - Added fetch failure error card with a **Retry** button that re-issues the POST request.
+  - Preserved Task-17 fallback views (`relaxed_filters` banner, audio player, empty array no-match message).
+  - Updated `App.jsx` to pass confirmed `categoryResult` and `profile` down to `RecommendationsScreen`.
+  - Added RTL test suite (`src/components/RecommendationsScreen.test.jsx`) verifying mount POST call, real cards rendering, and failed fetch Retry functionality.
+- **Files touched:**
+  - `src/components/RecommendationsScreen.jsx`
+  - `src/App.jsx`
+  - `src/components/RecommendationsScreen.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Complete Task-18 final frontend wiring connecting confirmed category + profile to the `/recommend` endpoint.
+- **Contracts affected:** none
+- **Known issues / TODO:** none
+
 ## 2026-09-19 — Build Recommendations Screen UI with Mock Data
 - **What changed:**
   - Implemented Recommendations screen rendering 3 default mock program cards (`name`, `scheme`, `nsqf_level`, `duration`, `reasoning`).

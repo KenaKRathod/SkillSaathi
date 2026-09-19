@@ -16,6 +16,7 @@ export function App() {
   const [currentScreen, setCurrentScreen] = useState(SCREENS.CONSENT);
   const [textFallbackMode, setTextFallbackMode] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [categoryResult, setCategoryResult] = useState(null);
 
   useEffect(() => {
     // Fallback: If navigator.mediaDevices is undefined, set global textFallbackMode flag in state without crashing
@@ -32,6 +33,11 @@ export function App() {
   const handleChatComplete = (completedProfile) => {
     setProfile(completedProfile || null);
     setCurrentScreen(SCREENS.CONFIRM);
+  };
+
+  const handleConfirmNext = (mappedCategoryResult) => {
+    setCategoryResult(mappedCategoryResult || null);
+    setCurrentScreen(SCREENS.RECOMMENDATIONS);
   };
 
   return (
@@ -59,16 +65,19 @@ export function App() {
       {currentScreen === SCREENS.CONFIRM && (
         <ConfirmScreen
           profile={profile}
-          onNext={() => setCurrentScreen(SCREENS.RECOMMENDATIONS)}
+          onNext={handleConfirmNext}
           onBack={() => setCurrentScreen(SCREENS.CHAT)}
         />
       )}
 
       {currentScreen === SCREENS.RECOMMENDATIONS && (
         <RecommendationsScreen
+          profile={profile}
+          categoryResult={categoryResult}
           onBackToChat={() => setCurrentScreen(SCREENS.CHAT)}
           onRestart={() => {
             setProfile(null);
+            setCategoryResult(null);
             setCurrentScreen(SCREENS.CONSENT);
           }}
         />

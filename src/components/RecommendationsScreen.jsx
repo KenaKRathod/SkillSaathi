@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export const DEFAULT_MOCK_PROGRAMS = [
   {
@@ -28,17 +28,145 @@ export const DEFAULT_MOCK_PROGRAMS = [
 ];
 
 export function RecommendationsScreen({
-  programs,
-  relaxedFiltersNote,
-  relaxed_filters,
-  audioUrl,
-  audio_url,
+  profile,
+  categoryResult,
+  category_result,
+  programs: initialPrograms,
+  relaxedFiltersNote: initialRelaxedNote,
+  relaxed_filters: initialRelaxedFilters,
+  audioUrl: initialAudioUrl,
+  audio_url: initialAudioUrlAlt,
+  apiUrl = 'http://localhost:8000/recommend',
   onRestart,
   onBackToChat,
+  skipFetch = false,
 }) {
-  const effectivePrograms = programs !== undefined ? programs : DEFAULT_MOCK_PROGRAMS;
-  const effectiveRelaxedNote = relaxedFiltersNote || relaxed_filters || null;
-  const effectiveAudioUrl = audioUrl || audio_url || null;
+  const [programs, setPrograms] = useState(initialPrograms !== undefined ? initialPrograms : null);
+  const [relaxedFiltersNote, setRelaxedFiltersNote] = useState(initialRelaxedNote || initialRelaxedFilters || null);
+  const [audioUrl, setAudioUrl] = useState(initialAudioUrl || initialAudioUrlAlt || null);
+  const [isLoading, setIsLoading] = useState(!skipFetch && initialPrograms === undefined);
+  const [fetchError, setFetchError] = useState(false);
+
+  const fetchRecommendations = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(false);
+
+    const payloadCategory = categoryResult || category_result || null;
+    const payloadProfile = profile || null;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category_result: payloadCategory,
+          profile: payloadProfile,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const receivedPrograms = data.programs || data.recommendations || [];
+      const receivedNote = data.relaxed_filters || data.relaxedFiltersNote || null;
+      const receivedAudio = data.audio_url || data.audioUrl || null;
+
+      setPrograms(receivedPrograms);
+      setRelaxedFiltersNote(receivedNote);
+      setAudioUrl(receivedAudio);
+    } catch (err) {
+      setFetchError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, categoryResult, category_result, profile]);
+
+  useEffect(() => {
+    if (!skipFetch && initialPrograms === undefined) {
+      fetchRecommendations();
+    }
+  }, [fetchRecommendations, initialPrograms, skipFetch]);
+
+  // Sync props if directly passed in unit tests
+  useEffect(() => {
+    if (initialPrograms !== undefined) {
+      setPrograms(initialPrograms);
+      setIsLoading(false);
+    }
+    if (initialRelaxedNote || initialRelaxedFilters) {
+      setRelaxedFiltersNote(initialRelaxedNote || initialRelaxedFilters);
+    }
+    if (initialAudioUrl || initialAudioUrlAlt) {
+      setAudioUrl(initialAudioUrl || initialAudioUrlAlt);
+    }
+  }, [initialPrograms, initialRelaxedNote, initialRelaxedFilters, initialAudioUrl, initialAudioUrlAlt]);
+
+  const effectivePrograms = programs !== null ? programs : (skipFetch ? DEFAULT_MOCK_PROGRAMS : []);
+
+  if (isLoading) {
+    return (
+      <div className="screen recommendations-screen">
+        <header className="screen-header">
+          <h2>Recommended Programs</h2>
+          <p className="subtitle">Matching top skilling programs for your profile...</p>
+        </header>
+        <main className="recommendations-content">
+          <div className="loading-container" data-testid="loading-indicator">
+            <span className="spinner" aria-hidden="true"></span>
+            <p>Finding recommended skilling programs...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="screen recommendations-screen">
+        <header className="screen-header">
+          <h2>Recommended Programs</h2>
+        </header>
+
+        <main className="recommendations-content">
+          <div className="fetch-error-card" role="alert" data-testid="fetch-error-card">
+            <span>Failed to load recommendations. Please try again.</span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-retry"
+              onClick={fetchRecommendations}
+              data-testid="retry-recommend-btn"
+            >
+              Retry
+            </button>
+          </div>
+
+          <div className="button-group">
+            {onBackToChat && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-large"
+                onClick={onBackToChat}
+              >
+                Back to Chat
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-outline btn-large"
+              onClick={onRestart}
+            >
+              Start Over
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (!effectivePrograms || effectivePrograms.length === 0) {
     return (
@@ -77,18 +205,18 @@ export function RecommendationsScreen({
       </header>
 
       <main className="recommendations-content">
-        {effectiveRelaxedNote && (
+        {relaxedFiltersNote && (
           <div className="relaxed-filters-banner" data-testid="relaxed-filters-note" role="note">
-            <strong>Filter Note:</strong> {effectiveRelaxedNote}
+            <strong>Filter Note:</strong> {relaxedFiltersNote}
           </div>
         )}
 
-        {effectiveAudioUrl && (
+        {audioUrl && (
           <div className="audio-player-container" data-testid="audio-player-container">
             <p className="audio-player-label">🔊 Spoken Recommendations Summary</p>
             <audio
               controls
-              src={effectiveAudioUrl}
+              src={audioUrl}
               className="audio-player"
               data-testid="audio-player"
             >
@@ -112,7 +240,7 @@ export function RecommendationsScreen({
                 <strong>Why this matches:</strong>
                 <p>{prog.reasoning}</p>
               </div>
-              {prog.audio_url && !effectiveAudioUrl && (
+              {prog.audio_url && !audioUrl && (
                 <div className="card-audio-player">
                   <audio controls src={prog.audio_url} data-testid={`card-audio-${index}`} />
                 </div>

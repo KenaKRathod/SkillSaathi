@@ -1,15 +1,46 @@
 """FastAPI application for voice-first skilling-recommendation agent."""
 
+import json
 from typing import Any, Dict, List
+import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
+from google import genai
 from app.agent_prompt import is_profile_complete
 from app.chat import call_llm, get_scripted_question
 from app.config import settings
 from app.state import get_session
 from app.stt import AudioDecodeError, STTUnavailableError, transcribe_audio
+
+# Load NSQF categories at startup
+try:
+    _nsqf_df = pd.read_csv("data/nsqf_categories.csv")
+    NSQF_CSV_TEXT = _nsqf_df.to_csv(index=False)
+    VALID_CATEGORIES = _nsqf_df["category_name"].dropna().tolist() if "category_name" in _nsqf_df.columns else []
+except Exception:
+    NSQF_CSV_TEXT = ""
+    VALID_CATEGORIES = []
+
+def find_closest_category(cat_name: str, valid_categories: List[str]) -> str:
+    if not valid_categories:
+        return cat_name
+    cat_words = set(cat_name.lower().split())
+    best_match = valid_categories[0]
+    best_overlap = -1
+    for vc in valid_categories:
+        vc_words = set(vc.lower().split())
+        overlap = len(cat_words.intersection(vc_words))
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_match = vc
+    if best_overlap == 0:
+        import difflib
+        matches = difflib.get_close_matches(cat_name, valid_categories, n=1)
+        if matches:
+            best_match = matches[0]
+    return best_match
 
 app = FastAPI(
     title="SkillSaathi API",
@@ -170,3 +201,76 @@ async def chat(req: ChatRequest) -> JSONResponse:
         },
     )
 
+
+
+class MapSkillsRequest(BaseModel):
+    profile: Dict[str, Any]
+
+@app.post("/map-skills")
+async def map_skills(req: MapSkillsRequest) -> JSONResponse:
+    """Map a completed profile to NSQF categories using LLM."""
+    prompt = f"""You are an expert career counselor. Map the user's profile to the best matching NSQF categories based on the provided CSV data.
+
+NSQF Categories CSV:
+{NSQF_CSV_TEXT}
+
+User Profile:
+{json.dumps(req.profile)}
+
+Return a JSON object strictly following this structure:
+{{
+  "primary_category": "Category name from CSV",
+  "secondary_category": "Another category name from CSV",
+  "evidence_quotes": ["quote from user profile or inference"],
+  "confidence": 0.85
+}}
+"""
+
+    client = genai.Client(api_key=settings.llm_api_key)
+    try:
+        response = client.models.generate_content(
+            model=settings.model_name,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+            },
+        )
+        result = json.loads(response.text)
+        
+        confidence = float(result.get("confidence", 0.0))
+        p_cat = result.get("primary_category", "")
+        s_cat = result.get("secondary_category", "")
+        
+        needs_correction = False
+        if p_cat not in VALID_CATEGORIES:
+            result["primary_category"] = find_closest_category(p_cat, VALID_CATEGORIES)
+            needs_correction = True
+        if s_cat not in VALID_CATEGORIES:
+            result["secondary_category"] = find_closest_category(s_cat, VALID_CATEGORIES)
+            needs_correction = True
+            
+        if needs_correction:
+            confidence = min(confidence, 0.5)
+            result["confidence"] = confidence
+            
+        if confidence < 0.6:
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "status": "needs_clarification",
+                    "question": "Could you provide more specific details about your daily tasks and the tools you use?"
+                }
+            )
+            
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=result
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status": "needs_clarification",
+                "question": "Could you provide more specific details about your daily tasks and the tools you use?"
+            }
+        )

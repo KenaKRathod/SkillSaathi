@@ -225,3 +225,157 @@ class TestSessionIsolation:
         from app.state import SESSIONS
         assert SESSIONS["A"]["profile"]["occupation"] == "welder"
         assert SESSIONS["B"]["profile"]["occupation"] == "painter"
+
+
+# ---------------------------------------------------------------------------
+# Test: both LLM attempts fail → scripted fallback, not a 500
+# ---------------------------------------------------------------------------
+
+class TestRetryFallback:
+    @patch("app.chat.genai")
+    def test_both_attempts_fail_returns_fallback(self, mock_genai, client):
+        """When the LLM raises on both retry attempts, the endpoint must
+        return HTTP 200 with a scripted fallback question — never a 500.
+        """
+        mock_client = mock_genai.Client.return_value
+        mock_client.models.generate_content.side_effect = RuntimeError(
+            "LLM timeout"
+        )
+
+        resp = client.post(
+            "/chat",
+            json={"session_id": "sess-retry", "message": "Hello!"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "in_progress"
+        assert body["next_question"]  # non-empty scripted question
+        # Must have been called exactly twice (initial + 1 retry)
+        assert mock_client.models.generate_content.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Test: malformed JSON from LLM is handled gracefully
+# ---------------------------------------------------------------------------
+
+class TestMalformedJsonHandling:
+    @patch("app.chat.genai")
+    def test_malformed_json_response_returns_fallback(self, mock_genai, client):
+        """If the LLM returns garbled non-JSON text, the endpoint should
+        still return a 200 with a scripted fallback question.
+        """
+        mock_client = mock_genai.Client.return_value
+        mock_response = type("Resp", (), {"text": "Sure! Here is your answer..."})()
+        mock_client.models.generate_content.return_value = mock_response
+
+        resp = client.post(
+            "/chat",
+            json={"session_id": "sess-bad-json", "message": "Hi"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "in_progress"
+        assert body["next_question"]  # scripted fallback
+
+    @patch("app.chat.genai")
+    def test_json_embedded_in_text_is_recovered(self, mock_genai, client):
+        """If the LLM wraps valid JSON inside surrounding prose, the regex
+        fallback should extract and use it successfully.
+        """
+        embedded_json = json.dumps({
+            "next_question": "How many years of experience?",
+            "extracted_fields": {"occupation": "carpenter"},
+        })
+        raw_text = f"Here is the response:\n{embedded_json}\nHope this helps!"
+        mock_client = mock_genai.Client.return_value
+        mock_response = type("Resp", (), {"text": raw_text})()
+        mock_client.models.generate_content.return_value = mock_response
+
+        resp = client.post(
+            "/chat",
+            json={"session_id": "sess-embedded", "message": "I am a carpenter"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "in_progress"
+        assert body["next_question"] == "How many years of experience?"
+
+
+# ---------------------------------------------------------------------------
+# Test: 3 consecutive empty extractions → redirect phrasing
+# ---------------------------------------------------------------------------
+
+class TestOffTopicRedirect:
+    @patch("app.main.call_llm")
+    def test_three_empty_extractions_trigger_redirect(
+        self, mock_call_llm, client
+    ):
+        """After 3 consecutive turns where extracted_fields is empty, the
+        next_question should be overwritten with a redirect prefix.
+        """
+        session_id = "sess-offtopic"
+
+        # All three turns: LLM returns a question but extracts nothing
+        for i in range(3):
+            mock_call_llm.return_value = _make_llm_return(
+                next_question=f"Interesting thought #{i + 1}!",
+                extracted_fields={},
+            )
+            resp = client.post(
+                "/chat",
+                json={"session_id": session_id, "message": f"random chat {i}"},
+            )
+            assert resp.status_code == 200
+
+        # The 3rd response must contain the redirect phrasing
+        body = resp.json()
+        assert body["next_question"].startswith("Let's get back to your work")
+
+    @patch("app.main.call_llm")
+    def test_redirect_resets_after_extraction(
+        self, mock_call_llm, client
+    ):
+        """Verify that a successful extraction resets the empty streak,
+        so the redirect does not fire prematurely after the reset.
+        """
+        session_id = "sess-reset"
+
+        # 2 empty turns
+        for _ in range(2):
+            mock_call_llm.return_value = _make_llm_return(
+                next_question="Tell me more?",
+                extracted_fields={},
+            )
+            client.post(
+                "/chat",
+                json={"session_id": session_id, "message": "blah"},
+            )
+
+        # 1 turn WITH extraction → resets streak
+        mock_call_llm.return_value = _make_llm_return(
+            next_question="How many years of experience?",
+            extracted_fields={"occupation": "driver"},
+        )
+        resp = client.post(
+            "/chat",
+            json={"session_id": session_id, "message": "I drive trucks"},
+        )
+        body = resp.json()
+        assert not body["next_question"].startswith("Let's get back to your work")
+
+        # 2 more empty turns — streak is only 2, redirect should NOT fire
+        for _ in range(2):
+            mock_call_llm.return_value = _make_llm_return(
+                next_question="Hmm okay",
+                extracted_fields={},
+            )
+            resp = client.post(
+                "/chat",
+                json={"session_id": session_id, "message": "something off topic"},
+            )
+        body = resp.json()
+        assert not body["next_question"].startswith("Let's get back to your work")
+

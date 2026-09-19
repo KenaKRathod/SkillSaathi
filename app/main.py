@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from app.agent_prompt import is_profile_complete
-from app.chat import call_llm
+from app.chat import call_llm, get_scripted_question
 from app.config import settings
 from app.state import get_session
 from app.stt import AudioDecodeError, STTUnavailableError, transcribe_audio
@@ -109,9 +109,13 @@ async def chat(req: ChatRequest) -> JSONResponse:
 
     1. Retrieve (or create) session state for ``session_id``.
     2. Append the user message to the conversation history.
-    3. Call the LLM with SYSTEM_PROMPT + history.
+    3. Call the LLM with SYSTEM_PROMPT + history (retries once on failure;
+       falls back to a scripted question if both attempts fail or the
+       response is unparseable JSON).
     4. Parse the JSON response, merge ``extracted_fields`` into the profile.
-    5. Return ``status: complete`` with the full profile when done,
+    5. Track consecutive empty extractions — after 3 in a row, inject a
+       redirect prefix: "Let's get back to your work — {generic question}".
+    6. Return ``status: complete`` with the full profile when done,
        otherwise ``status: in_progress`` with the ``next_question``.
     """
     session = get_session(req.session_id)
@@ -121,7 +125,7 @@ async def chat(req: ChatRequest) -> JSONResponse:
     history: List[Dict[str, str]] = session.setdefault("history", [])
 
     # ---- LLM turn --------------------------------------------------------
-    llm_result = call_llm(history, req.message)
+    llm_result = call_llm(history, req.message, profile=profile)
 
     # Persist messages into session history
     history.append({"role": "user", "parts": [{"text": req.message}]})
@@ -133,6 +137,23 @@ async def chat(req: ChatRequest) -> JSONResponse:
     # Merge any newly extracted fields
     extracted: Dict[str, Any] = llm_result.get("extracted_fields", {})
     profile.update(extracted)
+
+    # ---- Off-topic redirect tracking -------------------------------------
+    empty_streak: int = session.get("empty_streak", 0)
+    if extracted:
+        empty_streak = 0
+    else:
+        empty_streak += 1
+
+    session["empty_streak"] = empty_streak
+
+    # After 3 consecutive empty extractions, redirect the conversation
+    if empty_streak >= 3:
+        scripted = get_scripted_question(profile)
+        llm_result["next_question"] = (
+            f"Let's get back to your work — {scripted}"
+        )
+        session["empty_streak"] = 0
 
     # ---- Response ---------------------------------------------------------
     if is_profile_complete(profile):
@@ -148,3 +169,4 @@ async def chat(req: ChatRequest) -> JSONResponse:
             "next_question": llm_result.get("next_question", ""),
         },
     )
+

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-19 — Task-7: /chat fallback & retry logic
+- **What changed:**
+  - `call_llm` now retries the LLM call once on any exception; on second failure returns a scripted fallback question for the next empty profile field instead of raising.
+  - `parse_llm_response` now attempts regex extraction of a JSON object when `json.loads` fails; returns `None` on total failure so the caller can substitute the fallback.
+  - Added `get_scripted_question(profile)` — maps each `PROFILE_FIELD` to a generic human-friendly question.
+  - `/chat` endpoint tracks `empty_streak` per session; after 3 consecutive turns with empty `extracted_fields`, overrides `next_question` with `"Let's get back to your work — {scripted question}"` and resets the counter.
+  - Added 5 new tests (all mocked, no real API calls): double-exception fallback, malformed JSON handling, JSON-embedded-in-prose recovery, 3-empty redirect trigger, and streak reset after extraction.
+- **Files touched:**
+  - `app/chat.py`
+  - `app/main.py`
+  - `tests/test_chat.py`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Task-7 requirements: never expose a 500 on LLM failures, handle garbled JSON gracefully, and steer off-topic users back to profile building.
+- **Contracts affected:** none (no changes to profile schema or endpoint shape).
+- **Known issues / TODO:** none.
+
 ## 2026-09-19 — Add POST /transcribe and root endpoint
 - **What changed:**
   - Added `POST /transcribe` endpoint with `faster-whisper` (`small` model, `language="auto"`).

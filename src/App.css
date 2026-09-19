@@ -1,0 +1,191 @@
+/* App.css - Mobile-First CSS with Large Tap Targets */
+
+:root {
+  --primary-color: #1e6091;
+  --primary-active: #184e77;
+  --secondary-color: #52b788;
+  --background-color: #f8f9fa;
+  --card-background: #ffffff;
+  --text-color: #212529;
+  --text-muted: #6c757d;
+  --warning-bg: #fff3cd;
+  --warning-border: #ffecb5;
+  --warning-text: #664d03;
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --min-tap-target: 48px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--card-background);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.fallback-banner {
+  background-color: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Screen base styles */
+.screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.screen-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.screen-header h1 {
+  font-size: 1.8rem;
+  color: var(--primary-color);
+}
+
+.screen-header h2 {
+  font-size: 1.4rem;
+  color: var(--primary-color);
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Notice & Cards */
+.notice-card, .summary-card, .card {
+  background-color: var(--background-color);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.notice-card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+
+}
+
+.notice-card p {
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+.warning-banner {
+  background-color: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+/* Buttons - Mobile-First with Large Tap Targets */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--min-tap-target);
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  touch-action: manipulation;
+}
+
+.btn-large {
+  min-height: 54px;
+  font-size: 1.2rem;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.btn-primary:active {
+  background-color: var(--primary-active);
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: #ffffff;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+
+/* Screen specific spacing */
+.consent-content, .chat-content, .confirm-content, .recommendations-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.chat-placeholder {
+  min-height: 200px;
+  border: 2px dashed #dee2e6;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 16px;
+  color: var(--text-muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  background-color: #e2e3e5;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 8px;
+}
+

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-09-19 — Scaffold React (Vite) App with Screen Manager & Media Fallback
+- **What changed:**
+  - Scaffolded React (Vite) frontend with Vitest and React Testing Library setup.
+  - Implemented single-page screen state manager (`useState`) cycling through `Consent` -> `Chat` -> `Confirm` -> `Recommendations`.
+  - Added consent notice and "Start" navigation button on `ConsentScreen`.
+  - Implemented graceful `navigator.mediaDevices` detection setting a global `textFallbackMode` state flag without throwing exceptions.
+  - Added mobile-first responsive CSS (`App.css`) with large tap targets (minimum 48px/54px).
+  - Added automated test suite (`src/App.test.jsx`) using React Testing Library covering consent rendering, start navigation, and `navigator.mediaDevices` fallback mode state.
+- **Files touched:**
+  - `package.json`
+  - `vite.config.js`
+  - `index.html`
+  - `.npmrc`
+  - `src/main.jsx`
+  - `src/App.jsx`
+  - `src/App.css`
+  - `src/components/ConsentScreen.jsx`
+  - `src/components/ChatScreen.jsx`
+  - `src/components/ConfirmScreen.jsx`
+  - `src/components/RecommendationsScreen.jsx`
+  - `src/setupTests.js`
+  - `src/App.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Fulfill frontend scaffolding, screen-state manager, media fallback, mobile styling, and RTL test requirements.
+- **Contracts affected:** none
+- **Known issues / TODO:**
+  - Implement Task 6/8 voice/text chat features consuming `textFallbackMode`.
+
 ## 2026-09-19 — Add POST /transcribe and root endpoint
 - **What changed:**
   - Added `POST /transcribe` endpoint with `faster-whisper` (`small` model, `language="auto"`).

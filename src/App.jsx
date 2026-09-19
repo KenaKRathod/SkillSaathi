@@ -15,6 +15,7 @@ export const SCREENS = {
 export function App() {
   const [currentScreen, setCurrentScreen] = useState(SCREENS.CONSENT);
   const [textFallbackMode, setTextFallbackMode] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     // Fallback: If navigator.mediaDevices is undefined, set global textFallbackMode flag in state without crashing
@@ -27,6 +28,11 @@ export function App() {
       setTextFallbackMode(true);
     }
   }, []);
+
+  const handleChatComplete = (completedProfile) => {
+    setProfile(completedProfile || null);
+    setCurrentScreen(SCREENS.CONFIRM);
+  };
 
   return (
     <div className="app-container" data-text-fallback={textFallbackMode}>
@@ -45,13 +51,14 @@ export function App() {
 
       {currentScreen === SCREENS.CHAT && (
         <ChatScreen
-          onNext={() => setCurrentScreen(SCREENS.CONFIRM)}
+          onNext={handleChatComplete}
           textFallbackMode={textFallbackMode}
         />
       )}
 
       {currentScreen === SCREENS.CONFIRM && (
         <ConfirmScreen
+          profile={profile}
           onNext={() => setCurrentScreen(SCREENS.RECOMMENDATIONS)}
           onBack={() => setCurrentScreen(SCREENS.CHAT)}
         />
@@ -59,7 +66,11 @@ export function App() {
 
       {currentScreen === SCREENS.RECOMMENDATIONS && (
         <RecommendationsScreen
-          onRestart={() => setCurrentScreen(SCREENS.CONSENT)}
+          profile={profile}
+          onRestart={() => {
+            setProfile(null);
+            setCurrentScreen(SCREENS.CONSENT);
+          }}
         />
       )}
     </div>
@@ -67,4 +78,3 @@ export function App() {
 }
 
 export default App;
-

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function ConfirmScreen({ onNext, onBack }) {
+export function ConfirmScreen({ profile, onNext, onBack }) {
   return (
     <div className="screen confirm-screen">
       <header className="screen-header">
@@ -12,8 +12,18 @@ export function ConfirmScreen({ onNext, onBack }) {
           Please review the details we gathered before viewing skilling recommendations.
         </p>
 
-        <div className="summary-card">
-          <p><em>Profile details summary will appear here.</em></p>
+        <div className="summary-card" data-testid="profile-summary">
+          {profile && Object.keys(profile).length > 0 ? (
+            <ul className="profile-list">
+              {Object.entries(profile).map(([key, val]) => (
+                <li key={key}>
+                  <strong>{key.replace(/_/g, ' ')}:</strong> {String(val)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p><em>Profile details summary will appear here.</em></p>
+          )}
         </div>
 
         <div className="button-group">
@@ -29,3 +39,4 @@ export function ConfirmScreen({ onNext, onBack }) {
   );
 }
 
+export default ConfirmScreen;

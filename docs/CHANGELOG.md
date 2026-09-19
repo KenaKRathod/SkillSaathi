@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-19 — Build Chat Screen with `/chat` API & Fallbacks
+- **What changed:**
+  - Implemented Chat screen with session ID state (`session_id`).
+  - Integrated `POST http://localhost:8000/chat` sending `{ session_id, message }` on user input and displaying user and assistant chat bubbles.
+  - Implemented completion navigation (`status: "complete"`), passing profile data up to `ConfirmScreen`.
+  - Added inline `"Didn't catch that — try again"` prompt handling for `onTranscript(null)` without triggering `/chat`.
+  - Added fetch failure handling with a **Retry** button that re-sends the last user message.
+  - Added RTL unit test suite (`src/components/ChatScreen.test.jsx`) verifying chat bubbles rendering, null transcript prompt behavior, failed request retry functionality, and completion handoff.
+- **Files touched:**
+  - `src/components/ChatScreen.jsx`
+  - `src/App.jsx`
+  - `src/components/ConfirmScreen.jsx`
+  - `src/App.css`
+  - `src/components/ChatScreen.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Build frontend chat conversation workflow, agent API communication, retry mechanisms, and RTL tests.
+- **Contracts affected:** none
+- **Known issues / TODO:** none
+
 ## 2026-09-19 — Build MicButton Component with STT Integration & Fallback Mode
 - **What changed:**
   - Built `<MicButton>` component supporting `MediaRecorder` audio recording lifecycle (press to start, press to stop).

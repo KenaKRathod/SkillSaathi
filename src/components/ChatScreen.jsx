@@ -1,16 +1,77 @@
 import React, { useState } from 'react';
 import { MicButton } from './MicButton';
 
-export function ChatScreen({ onNext, textFallbackMode }) {
+export function ChatScreen({
+  onNext,
+  textFallbackMode = false,
+  chatApiUrl = 'http://localhost:8000/chat',
+}) {
+  const [sessionId] = useState(() => 'sess_' + Math.random().toString(36).substring(2, 11));
   const [messages, setMessages] = useState([]);
-  const [showRetryPrompt, setShowRetryPrompt] = useState(false);
+  const [noSpeechPrompt, setNoSpeechPrompt] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const handleTranscript = (text) => {
-    if (text === null) {
-      setShowRetryPrompt(true);
-    } else {
-      setShowRetryPrompt(false);
-      setMessages((prev) => [...prev, { role: 'user', text }]);
+  const sendChatMessage = async (messageText) => {
+    setIsSending(true);
+    setFetchError(false);
+    setLastUserMessage(messageText);
+
+    try {
+      const response = await fetch(chatApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: messageText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chat API error with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.next_question) {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now() + Math.random(), role: 'assistant', text: data.next_question },
+        ]);
+      }
+
+      if (data && data.status === 'complete') {
+        onNext?.(data.profile || {});
+      }
+    } catch (err) {
+      setFetchError(true);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleTranscript = (transcript) => {
+    if (transcript === null) {
+      setNoSpeechPrompt(true);
+      return;
+    }
+
+    if (typeof transcript === 'string' && transcript.trim()) {
+      setNoSpeechPrompt(false);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now() + Math.random(), role: 'user', text: transcript },
+      ]);
+      sendChatMessage(transcript);
+    }
+  };
+
+  const handleRetryFetch = () => {
+    if (lastUserMessage) {
+      sendChatMessage(lastUserMessage);
     }
   };
 
@@ -32,23 +93,50 @@ export function ChatScreen({ onNext, textFallbackMode }) {
           )}
         </div>
 
-        {showRetryPrompt && (
+        {noSpeechPrompt && (
           <div className="retry-prompt" role="alert">
-            No speech detected. Please try speaking again.
+            Didn't catch that — try again
           </div>
         )}
 
-        <div className="chat-box">
+        <div className="chat-box" data-testid="chat-box">
           {messages.length === 0 ? (
             <p className="placeholder-text">Conversation will appear here...</p>
           ) : (
-            messages.map((msg, index) => (
-              <div key={index} className={`message ${msg.role}`}>
-                <strong>{msg.role === 'user' ? 'You' : 'Agent'}:</strong> {msg.text}
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`chat-bubble ${msg.role}`}
+                data-testid={`${msg.role}-bubble`}
+              >
+                <div className="bubble-sender">
+                  {msg.role === 'user' ? 'You' : 'Assistant'}
+                </div>
+                <div className="bubble-text">{msg.text}</div>
               </div>
             ))
           )}
+
+          {isSending && (
+            <div className="chat-bubble assistant loading-bubble" data-testid="assistant-loading">
+              <span className="typing-indicator">Assistant is thinking...</span>
+            </div>
+          )}
         </div>
+
+        {fetchError && (
+          <div className="fetch-error-card" role="alert">
+            <span>Failed to send message.</span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-retry"
+              onClick={handleRetryFetch}
+              data-testid="retry-button"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <div className="controls-area">
           <MicButton
@@ -56,10 +144,6 @@ export function ChatScreen({ onNext, textFallbackMode }) {
             textFallbackMode={textFallbackMode}
           />
         </div>
-
-        <button className="btn btn-primary btn-large nav-btn" onClick={onNext}>
-          Continue to Confirmation
-        </button>
       </main>
     </div>
   );

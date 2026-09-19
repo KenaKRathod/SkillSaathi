@@ -113,6 +113,34 @@ body {
   text-align: center;
 }
 
+/* Fetch Error Card & Retry */
+.fetch-error-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.btn-retry {
+  min-height: 38px;
+  width: auto;
+  padding: 6px 16px;
+  font-size: 0.95rem;
+  background-color: #dc3545;
+  color: #ffffff;
+}
+
+.btn-retry:active {
+  background-color: #bd2130;
+}
+
 /* Buttons - Mobile-First with Large Tap Targets */
 .btn {
   display: inline-flex;
@@ -171,14 +199,17 @@ body {
 }
 
 .chat-box {
-  min-height: 200px;
-  max-height: 350px;
+  min-height: 220px;
+  max-height: 380px;
   overflow-y: auto;
   border: 1px solid #dee2e6;
   border-radius: 12px;
   margin: 12px 0 20px 0;
   padding: 16px;
   background-color: #fdfdfd;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .placeholder-text {
@@ -187,23 +218,52 @@ body {
   margin-top: 60px;
 }
 
-.message {
-  margin-bottom: 12px;
+.chat-bubble {
+  display: flex;
+  flex-direction: column;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 12px;
   max-width: 85%;
+  word-wrap: break-word;
+  line-height: 1.4;
 }
 
-.message.user {
-  background-color: #e2f0fb;
-  margin-left: auto;
-  text-align: right;
+.chat-bubble.user {
+  background-color: #1e6091;
+  color: #ffffff;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
 }
 
-.message.agent {
+.chat-bubble.user .bubble-sender {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chat-bubble.assistant {
   background-color: #e9ecef;
-  margin-right: auto;
-  text-align: left;
+  color: var(--text-color);
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+
+.chat-bubble.assistant .bubble-sender {
+  color: var(--text-muted);
+}
+
+.bubble-sender {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.bubble-text {
+  font-size: 1.05rem;
+}
+
+.loading-bubble {
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .controls-area {
@@ -266,6 +326,22 @@ body {
   100% {
     box-shadow: 0 0 0 0 rgba(217, 4, 41, 0);
   }
+}
+
+/* Profile List styling */
+.profile-list {
+  list-style: none;
+  padding: 0;
+}
+
+.profile-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 1rem;
+}
+
+.profile-list li:last-child {
+  border-bottom: none;
 }
 
 /* Fallback Text Input Form */

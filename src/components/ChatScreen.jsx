@@ -1,6 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { MicButton } from './MicButton';
 
 export function ChatScreen({ onNext, textFallbackMode }) {
+  const [messages, setMessages] = useState([]);
+  const [showRetryPrompt, setShowRetryPrompt] = useState(false);
+
+  const handleTranscript = (text) => {
+    if (text === null) {
+      setShowRetryPrompt(true);
+    } else {
+      setShowRetryPrompt(false);
+      setMessages((prev) => [...prev, { role: 'user', text }]);
+    }
+  };
+
   return (
     <div className="screen chat-screen">
       <header className="screen-header">
@@ -19,11 +32,32 @@ export function ChatScreen({ onNext, textFallbackMode }) {
           )}
         </div>
 
-        <div className="chat-placeholder">
-          <p className="placeholder-text">Conversation will appear here...</p>
+        {showRetryPrompt && (
+          <div className="retry-prompt" role="alert">
+            No speech detected. Please try speaking again.
+          </div>
+        )}
+
+        <div className="chat-box">
+          {messages.length === 0 ? (
+            <p className="placeholder-text">Conversation will appear here...</p>
+          ) : (
+            messages.map((msg, index) => (
+              <div key={index} className={`message ${msg.role}`}>
+                <strong>{msg.role === 'user' ? 'You' : 'Agent'}:</strong> {msg.text}
+              </div>
+            ))
+          )}
         </div>
 
-        <button className="btn btn-primary btn-large" onClick={onNext}>
+        <div className="controls-area">
+          <MicButton
+            onTranscript={handleTranscript}
+            textFallbackMode={textFallbackMode}
+          />
+        </div>
+
+        <button className="btn btn-primary btn-large nav-btn" onClick={onNext}>
           Continue to Confirmation
         </button>
       </main>
@@ -31,3 +65,4 @@ export function ChatScreen({ onNext, textFallbackMode }) {
   );
 }
 
+export default ChatScreen;

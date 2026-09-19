@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-19 — Build MicButton Component with STT Integration & Fallback Mode
+- **What changed:**
+  - Built `<MicButton>` component supporting `MediaRecorder` audio recording lifecycle (press to start, press to stop).
+  - Configured audio blob upload via multipart POST to `http://localhost:8000/transcribe`.
+  - Added handling for `no_speech_detected` response calling `onTranscript(null)` to prompt user retry.
+  - Implemented recording pulse indicator dot and loading spinner UI states.
+  - Implemented `textFallbackMode` rendering plain text `<input>` and submit button calling `onTranscript(typedText)`.
+  - Integrated `<MicButton>` in `ChatScreen` with message list and retry prompt.
+  - Added RTL test suite (`src/components/MicButton.test.jsx`) with mock fetch and MediaRecorder verifying successful transcription, `no_speech_detected` `null` callback, and `textFallbackMode` rendering.
+- **Files touched:**
+  - `src/components/MicButton.jsx`
+  - `src/components/ChatScreen.jsx`
+  - `src/App.css`
+  - `src/components/MicButton.test.jsx`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Build frontend microphone recording control, backend STT upload integration, text input fallback, and automated unit tests.
+- **Contracts affected:** none
+- **Known issues / TODO:**
+  - Integrate dialogue agent state machine (Task 6/8).
+
 ## 2026-09-19 — Scaffold React (Vite) App with Screen Manager & Media Fallback
 - **What changed:**
   - Scaffolded React (Vite) frontend with Vitest and React Testing Library setup.

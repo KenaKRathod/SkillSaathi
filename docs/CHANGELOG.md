@@ -138,6 +138,39 @@
 - **Known issues / TODO:**
   - Implement Task 6/8 voice/text chat features consuming `textFallbackMode`.
 
+## 2026-09-19 — Task-9: Source & normalize NSQF category data
+- **What changed:**
+  - Created `scripts/build_nsqf_categories.py` — downloads the NSDC Job Role List xlsx (604 roles, 36 sectors), groups them into 25 voice-friendly categories, and outputs `data/nsqf_categories.csv`.
+  - Sector-to-category mapping merges related sectors (e.g. "Textile Sector Skill Council" + "Apparel, Made-Ups & Home Furnishing" → "Textiles & Tailoring"), normalises whitespace/casing variants, and handles all 36 source sectors.
+  - Hard-failure path: download errors or unexpected file structure → clear error message naming the URL and expected columns, exit code 1. Never silently produces empty/bad CSV.
+  - Warning if fewer than 15 distinct sectors found after grouping.
+  - 17 new pytest tests covering grouping logic, CSV integrity (20-30 rows, no nulls, no duplicates), and mocked download failure.
+- **Files touched:**
+  - `scripts/build_nsqf_categories.py` (new)
+  - `data/nsqf_categories.csv` (new, generated)
+  - `tests/test_nsqf_categories.py` (new)
+  - `requirements.txt` (added pandas, openpyxl)
+- **Why:** Task-9 — provide the curated NSQF category data file that the skill mapper and recommender stages depend on.
+- **Contracts affected:** Creates the `data/nsqf_categories.*` data file referenced in AI_RULES §2 and §3.4.
+- **Known issues / TODO:** Category 25 ("Retail, Sports & General Services") is a catch-all for 7 small sectors; may need splitting if the voice conversation finds it too broad.
+
+## 2026-09-19 — Task-7: /chat fallback & retry logic
+- **What changed:**
+  - `call_llm` now retries the LLM call once on any exception; on second failure returns a scripted fallback question for the next empty profile field instead of raising.
+  - `parse_llm_response` now attempts regex extraction of a JSON object when `json.loads` fails; returns `None` on total failure so the caller can substitute the fallback.
+  - Added `get_scripted_question(profile)` — maps each `PROFILE_FIELD` to a generic human-friendly question.
+  - `/chat` endpoint tracks `empty_streak` per session; after 3 consecutive turns with empty `extracted_fields`, overrides `next_question` with `"Let's get back to your work — {scripted question}"` and resets the counter.
+  - Added 5 new tests (all mocked, no real API calls): double-exception fallback, malformed JSON handling, JSON-embedded-in-prose recovery, 3-empty redirect trigger, and streak reset after extraction.
+- **Files touched:**
+  - `app/chat.py`
+  - `app/main.py`
+  - `tests/test_chat.py`
+  - `docs/CHANGELOG.md`
+- **Why:**
+  - Task-7 requirements: never expose a 500 on LLM failures, handle garbled JSON gracefully, and steer off-topic users back to profile building.
+- **Contracts affected:** none (no changes to profile schema or endpoint shape).
+- **Known issues / TODO:** none.
+
 ## 2026-09-19 — Add POST /transcribe and root endpoint
 - **What changed:**
   - Added `POST /transcribe` endpoint with `faster-whisper` (`small` model, `language="auto"`).
@@ -160,3 +193,13 @@
   - Added `POST /transcribe` endpoint accepting multipart form-data `audio`.
 - **Known issues / TODO:**
   - Stage 2: Conversational dialogue agent and state machine.
+
+## 2026-09-19 — BE-03: API Contract for Frontend Integration
+- **What changed:**
+  - Created `api_contract.md` with Pydantic models and example JSON for all 7 endpoints: `POST /session`, `POST /stt`, `POST /turn`, `POST /readback`, `POST /confirm`, `POST /recommend`, `POST /tts`.
+- **Files touched:**
+  - `api_contract.md`
+- **Why:**
+  - Provide a clear, minimal contract for the frontend developer to build against.
+- **Contracts affected:**
+  - Formalized endpoint schemas for the 4-stage pipeline.

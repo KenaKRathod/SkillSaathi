@@ -141,6 +141,52 @@ body {
   background-color: #bd2130;
 }
 
+/* Form & Editable Fields - Mobile First */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fields-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-input {
+  min-height: var(--min-tap-target);
+  padding: 10px 14px;
+  font-size: 1.05rem;
+  border: 2px solid #ced4da;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: var(--text-color);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(30, 96, 145, 0.15);
+}
+
 /* Buttons - Mobile-First with Large Tap Targets */
 .btn {
   display: inline-flex;
@@ -326,22 +372,6 @@ body {
   100% {
     box-shadow: 0 0 0 0 rgba(217, 4, 41, 0);
   }
-}
-
-/* Profile List styling */
-.profile-list {
-  list-style: none;
-  padding: 0;
-}
-
-.profile-list li {
-  padding: 6px 0;
-  border-bottom: 1px solid #e9ecef;
-  font-size: 1rem;
-}
-
-.profile-list li:last-child {
-  border-bottom: none;
 }
 
 /* Fallback Text Input Form */

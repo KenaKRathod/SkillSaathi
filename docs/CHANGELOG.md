@@ -22,3 +22,13 @@
   - Added `POST /transcribe` endpoint accepting multipart form-data `audio`.
 - **Known issues / TODO:**
   - Stage 2: Conversational dialogue agent and state machine.
+
+## 2026-09-19 — BE-03: API Contract for Frontend Integration
+- **What changed:**
+  - Created `api_contract.md` with Pydantic models and example JSON for all 7 endpoints: `POST /session`, `POST /stt`, `POST /turn`, `POST /readback`, `POST /confirm`, `POST /recommend`, `POST /tts`.
+- **Files touched:**
+  - `api_contract.md`
+- **Why:**
+  - Provide a clear, minimal contract for the frontend developer to build against.
+- **Contracts affected:**
+  - Formalized endpoint schemas for the 4-stage pipeline.

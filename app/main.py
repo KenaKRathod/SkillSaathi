@@ -2,7 +2,8 @@
 
 import io
 import json
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Optional
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -431,11 +432,18 @@ Program Details:
 class TTSRequest(BaseModel):
     """Incoming text-to-speech request."""
     text: str
+    lang: Optional[str] = None
+    language: Optional[str] = None
 
 
 @app.post("/tts")
 async def tts(req: TTSRequest) -> Response:
     """Convert text to speech audio using gTTS.
+
+    Supports multilingual voice synthesis:
+    - Auto-detects Hindi (hi) if text contains Devanagari script.
+    - Defaults to English (en) for Latin text.
+    - Explicitly respects `lang` or `language` when provided.
 
     Returns:
         - audio/mpeg binary on success
@@ -448,11 +456,21 @@ async def tts(req: TTSRequest) -> Response:
             detail="Text must be non-empty.",
         )
 
+    target_lang = req.lang or req.language
+    if not target_lang or target_lang.lower() == "auto":
+        # Auto-detect: if Devanagari characters are present, synthesize in Hindi
+        if re.search(r"[\u0900-\u097F]", req.text):
+            target_lang = "hi"
+        else:
+            target_lang = "en"
+    else:
+        target_lang = target_lang.lower().strip()
+
     try:
         from gtts import gTTS
 
         buf = io.BytesIO()
-        tts_obj = gTTS(text=req.text, lang="en")
+        tts_obj = gTTS(text=req.text, lang=target_lang)
         tts_obj.write_to_fp(buf)
         audio_bytes = buf.getvalue()
 

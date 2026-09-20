@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         description="LLM provider API key",
     )
     model_name: str = Field(
-        default="gemini-1.5-flash",
+        default="gemini-3.6-flash",
         validation_alias=AliasChoices("model_name", "MODEL_NAME", "llm_model_name", "LLM_MODEL_NAME"),
         description="Model name to use for recommendations",
     )

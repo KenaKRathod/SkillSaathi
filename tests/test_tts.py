@@ -75,6 +75,51 @@ class TestTTSHappyPath:
         assert len(response.content) > 0
         assert response.content == fake_audio
 
+    def test_hindi_text_autodetects_hi_language(self):
+        """Devanagari text should automatically set lang='hi' for gTTS."""
+        fake_audio = b"\xff\xfb\x90\x00" + b"\x00" * 200
+
+        mock_gtts_cls = MagicMock()
+        mock_instance = MagicMock()
+        mock_instance.write_to_fp.side_effect = lambda fp: fp.write(fake_audio)
+        mock_gtts_cls.return_value = mock_instance
+
+        fake_gtts_module = MagicMock()
+        fake_gtts_module.gTTS = mock_gtts_cls
+
+        with patch.dict("sys.modules", {"gtts": fake_gtts_module}):
+            response = client.post(
+                "/tts",
+                json={"text": "नमस्ते! आपका स्वागत है।"},
+            )
+
+        assert response.status_code == 200
+        assert response.content == fake_audio
+        mock_gtts_cls.assert_called_once_with(
+            text="नमस्ते! आपका स्वागत है।", lang="hi"
+        )
+
+    def test_explicit_lang_parameter_respected(self):
+        """Explicit lang parameter overrides auto-detection."""
+        fake_audio = b"\xff\xfb\x90\x00" + b"\x00" * 200
+
+        mock_gtts_cls = MagicMock()
+        mock_instance = MagicMock()
+        mock_instance.write_to_fp.side_effect = lambda fp: fp.write(fake_audio)
+        mock_gtts_cls.return_value = mock_instance
+
+        fake_gtts_module = MagicMock()
+        fake_gtts_module.gTTS = mock_gtts_cls
+
+        with patch.dict("sys.modules", {"gtts": fake_gtts_module}):
+            response = client.post(
+                "/tts",
+                json={"text": "Hello", "lang": "hi"},
+            )
+
+        assert response.status_code == 200
+        mock_gtts_cls.assert_called_once_with(text="Hello", lang="hi")
+
 
 class TestTTSFailure:
     """When gTTS fails, return {audio_available: false} with 200, not a 500."""

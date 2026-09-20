@@ -30,11 +30,28 @@ def test_parse_row():
 
 @patch("scripts.build_skilling_programs.scrape_programs")
 def test_csv_output_and_partial_confidence(mock_scrape):
-    # Mock a successful scrape returning 15 rows
+    # Mock a successful scrape returning 15 realistic PMKVY rows
+    course_names = [
+        "Domestic Data Entry Operator",
+        "CRM Domestic Voice Associate",
+        "Accounts Executive (Computerised Accounting)",
+        "Junior Software Developer",
+        "Web Development Associate",
+        "DTP (Desktop Publishing) Operator",
+        "Domestic IT Helpdesk Attendant",
+        "Office Operations Executive",
+        "Digital Marketing Associate",
+        "Computer Hardware & Networking Assistant",
+        "E-Commerce Operations Assistant",
+        "Course 11",
+        "Database Administration Assistant",
+        "Graphic Design Associate",
+        "Customer Care Executive",
+    ]
     programs = []
     for i in range(15):
         programs.append({
-            'name': f'Course {i}',
+            'name': course_names[i],
             'scheme': 'PMKVY 4.0',
             'sector': 'IT',
             'nsqf_level': '4' if i < 10 else '', # Some missing to trigger partial

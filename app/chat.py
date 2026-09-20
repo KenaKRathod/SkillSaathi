@@ -102,8 +102,6 @@ def parse_llm_response(text: str) -> Optional[Dict[str, Any]]:
 
 # ---------------------------------------------------------------------------
 # LLM call with retry (max 2 attempts) and fallback
-# ---------------------------------------------------------------------------
-
 def call_llm(
     history: List[Dict[str, str]],
     user_message: str,
@@ -111,9 +109,9 @@ def call_llm(
 ) -> Dict[str, Any]:
     """Send conversation to the Gemini LLM and return parsed JSON dict.
 
-    Retries once on any exception.  If both attempts fail, or if the
-    response cannot be parsed as JSON (even after regex recovery), a
-    scripted fallback question is returned instead of raising.
+    Retries once on any exception (max 2 attempts). If both attempts fail,
+    or if the response cannot be parsed as JSON, a scripted fallback question
+    is returned instead of raising.
 
     Args:
         history: Conversation history so far.
@@ -145,16 +143,14 @@ def call_llm(
             )
             return _fallback_result(profile)
 
-        except Exception:
+        except Exception as exc:
             logger.warning(
-                "LLM call failed on attempt %d/%d",
+                "LLM call failed on attempt %d/%d: %s",
                 attempt,
                 max_attempts,
-                exc_info=True,
+                exc,
             )
             if attempt == max_attempts:
                 return _fallback_result(profile)
-            # Otherwise loop to retry
 
-    # Should never reach here, but guard defensively
-    return _fallback_result(profile)  # pragma: no cover
+    return _fallback_result(profile)

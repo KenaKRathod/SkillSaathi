@@ -63,7 +63,7 @@ export function RecommendationsScreen({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          category_result: payloadCategory,
+          mapped_categories: payloadCategory,
           profile: payloadProfile,
         }),
       });
@@ -74,7 +74,7 @@ export function RecommendationsScreen({
 
       const data = await response.json();
 
-      const receivedPrograms = data.programs || data.recommendations || [];
+      const receivedPrograms = data.results || data.programs || data.recommendations || [];
       const receivedNote = data.relaxed_filters || data.relaxedFiltersNote || null;
       const initialReceivedAudio = data.audio_url || data.audioUrl || null;
 
@@ -104,13 +104,23 @@ export function RecommendationsScreen({
           });
 
           if (ttsResponse.ok) {
-            const ttsData = await ttsResponse.json();
-            if (ttsData && ttsData.audio_available === true) {
+            const contentType = ttsResponse.headers.get('content-type') || '';
+            if (contentType.includes('audio/')) {
+              // Success: backend returned binary audio
+              const audioBlob = await ttsResponse.blob();
+              const blobUrl = URL.createObjectURL(audioBlob);
               setAudioAvailable(true);
-              setAudioUrl(ttsData.audio_url || initialReceivedAudio || 'http://localhost:8000/audio/sample.mp3');
+              setAudioUrl(blobUrl);
             } else {
-              setAudioAvailable(false);
-              setAudioUrl(null);
+              // Fallback: backend returned JSON (gTTS failure)
+              const ttsData = await ttsResponse.json();
+              if (ttsData && ttsData.audio_available === true) {
+                setAudioAvailable(true);
+                setAudioUrl(ttsData.audio_url || initialReceivedAudio);
+              } else {
+                setAudioAvailable(false);
+                setAudioUrl(null);
+              }
             }
           } else {
             setAudioAvailable(false);

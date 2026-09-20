@@ -1,5 +1,6 @@
 """FastAPI application for voice-first skilling-recommendation agent."""
 
+import io
 import json
 from typing import Any, Dict, List
 import pandas as pd
@@ -421,3 +422,47 @@ Program Details:
         response_data["relaxed_filters"] = relaxed_filters
         
     return JSONResponse(status_code=200, content=response_data)
+
+
+# ---------------------------------------------------------------------------
+# POST /tts — text-to-speech endpoint
+# ---------------------------------------------------------------------------
+
+class TTSRequest(BaseModel):
+    """Incoming text-to-speech request."""
+    text: str
+
+
+@app.post("/tts")
+async def tts(req: TTSRequest) -> Response:
+    """Convert text to speech audio using gTTS.
+
+    Returns:
+        - audio/mpeg binary on success
+        - HTTP 200 {"audio_available": false} if gTTS fails
+        - HTTP 400 if text is empty
+    """
+    if not req.text or not req.text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text must be non-empty.",
+        )
+
+    try:
+        from gtts import gTTS
+
+        buf = io.BytesIO()
+        tts_obj = gTTS(text=req.text, lang="en")
+        tts_obj.write_to_fp(buf)
+        audio_bytes = buf.getvalue()
+
+        return Response(
+            content=audio_bytes,
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "inline; filename=\"tts.mp3\""},
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"audio_available": False},
+        )
